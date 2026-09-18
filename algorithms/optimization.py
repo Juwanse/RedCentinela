@@ -15,8 +15,8 @@ def configuration_score(
     - Use problem.score_components(configuration); ya retorna cobertura,
       redundancia y exposición en ese orden.
     """
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 1: implemente configuration_score")
+    coverage, redundancy, exposure = problem.score_components(configuration)
+    return coverage - redundancy - exposure
 
 
 def hill_climbing(
@@ -48,8 +48,7 @@ def cooling_schedule(initial_temperature: float, cooling_rate: float, iteration:
 
     Esta función se invoca desde simulated_annealing en cada iteración.
     """
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 2: implemente cooling_schedule")
+    return initial_temperature * cooling_rate ** iteration
 
 
 def simulated_annealing(
@@ -79,8 +78,48 @@ def simulated_annealing(
     rng = rng or random.Random()
     minimum_temperature = 1e-9
 
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 2: implemente simulated_annealing")
+    if not problem.is_valid(initial_configuration):
+        raise ValueError("La configuración inicial debe ser válida")
+    if not math.isfinite(initial_temperature) or initial_temperature <= 0:
+        raise ValueError("La temperatura inicial debe ser positiva y finita")
+    if not 0 < cooling_rate < 1:
+        raise ValueError("El factor de enfriamiento debe estar entre 0 y 1, sin incluirlos")
+    if max_iterations < 0:
+        raise ValueError("El número de iteraciones no puede ser negativo")
+
+    current = tuple(initial_configuration)
+    current_score = configuration_score(problem, current)
+    best, best_score = current, current_score
+    history, score_history = [current], [current_score]
+    evaluations, iterations = 1, 0
+    termination = "Límite de iteraciones"
+
+    for iteration in range(max_iterations):
+        temperature = cooling_schedule(initial_temperature, cooling_rate, iteration)
+        if temperature <= minimum_temperature:
+            termination = "Temperatura mínima"
+            break
+        neighbors = problem.neighbors(current)
+        if not neighbors:
+            termination = "Ausencia de vecinos"
+            break
+        candidate = rng.choice(neighbors)
+        candidate_score = configuration_score(problem, candidate)
+        evaluations += 1
+        delta = candidate_score - current_score
+        if delta > 0 or rng.random() < math.exp(delta / temperature):
+            current, current_score = candidate, candidate_score
+            if current_score > best_score:
+                best, best_score = current, current_score
+        iterations += 1
+        history.append(current)
+        score_history.append(current_score)
+
+    return OptimizationResult(
+        best, best_score, evaluations, iterations, history, score_history,
+        {"termination": termination, "initial_temperature": initial_temperature,
+         "cooling_rate": cooling_rate},
+    )
 
 
 def one_point_crossover(

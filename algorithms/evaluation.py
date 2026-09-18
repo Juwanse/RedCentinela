@@ -38,5 +38,27 @@ def evaluation_function(state: GameState) -> float:
     if state.is_win() or state.is_lose():
         return base_evaluation_function(state)
 
-    # TODO: Add your code here
-    return base_evaluation_function(state)
+    distances = [
+        state.layout.distance(state.defender_position, terminal)
+        for terminal in sorted(state.pending_terminals)
+    ]
+    reachable = [distance for distance in distances if math.isfinite(distance)]
+    nearest = min(reachable, default=0)
+    unreachable = len(distances) - len(reachable)
+    separation = state.layout.distance(state.defender_position, state.intruder_position)
+    # La bonificación de seguridad se satura para no premiar huir indefinidamente.
+    safety = min(separation, 6)
+    immediate_risk = 1 if separation <= 1 else 0
+    mobility = sum(action != "Stop" for action in state.get_legal_actions(0))
+
+    value = (
+        state.get_score()
+        - 80 * len(state.pending_terminals)
+        - 8 * nearest
+        - 200 * unreachable
+        + 6 * safety
+        - 180 * immediate_risk
+        + 3 * mobility
+    )
+    # Incluso puntajes acumulados extremos deben quedar debajo de la utilidad terminal.
+    return max(-999.0, min(999.0, float(value)))

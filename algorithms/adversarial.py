@@ -61,5 +61,37 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         - En MAX actualice alpha y corte si valor >= beta; en MIN actualice beta
           y corte si valor <= alpha.
         """
-        # TODO: Add your code here
-        raise NotImplementedError("Punto 5: implemente AlphaBetaAgent.get_action")
+        self.nodes_evaluated = 0
+
+        def search(node, agent_index, remaining, alpha, beta):
+            self.nodes_evaluated += 1
+            if node.is_win() or node.is_lose() or remaining == 0:
+                return evaluation_function(node), None
+            actions = node.get_legal_actions(agent_index)
+            if not actions:
+                return evaluation_function(node), None
+
+            maximizing = agent_index == 0
+            best_value = float("-inf") if maximizing else float("inf")
+            best_action = actions[0]
+            next_agent = (agent_index + 1) % node.get_num_agents()
+            for action in actions:
+                value, _ = search(
+                    node.generate_successor(agent_index, action),
+                    next_agent, remaining - 1, alpha, beta,
+                )
+                # Las comparaciones estrictas conservan la primera acción empatada.
+                if maximizing:
+                    if value > best_value:
+                        best_value, best_action = value, action
+                    alpha = max(alpha, best_value)
+                else:
+                    if value < best_value:
+                        best_value, best_action = value, action
+                    beta = min(beta, best_value)
+                if alpha >= beta:
+                    break
+            return best_value, best_action
+
+        _, action = search(state, 0, self.depth, float("-inf"), float("inf"))
+        return action
