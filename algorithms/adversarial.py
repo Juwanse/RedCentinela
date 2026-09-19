@@ -25,24 +25,79 @@ class MinimaxAgent(MultiAgentSearchAgent):
         """
         Retorna la acción del defensor con mayor valor Minimax.
 
-        El defensor es MAX (agente 0), el intruso es MIN (agente 1) y cada
-        acción consume un ply. Debe respetar el orden de las acciones legales,
-        usar evaluation_function en terminales y cortes, y contar cada estado
-        procesado una vez en self.nodes_evaluated, incluida la raíz.
+        El defensor es MAX (agente 0), el intruso es MIN (agente 1)
+        y cada acción consume un ply.
 
-        Tips:
-        - Use state.get_legal_actions(agent_index) y
-          state.generate_successor(agent_index, action) para expandir el árbol.
-        - Compruebe state.is_win(), state.is_lose() y el corte de profundidad;
-          evalúe esos estados con evaluation_function(state).
-        - El siguiente agente es (agent_index + 1) % state.get_num_agents().
-          depth=1 incluye una acción de MAX y depth=2 una de MAX y una de MIN.
-        - Reinicie las métricas y cuente una vez cada estado procesado, incluida
-          la raíz. Retorne la acción de MAX y conserve la primera en los empates.
+        Se conserva la primera acción en caso de empate y se cuenta
+        cada estado procesado una sola vez en self.nodes_evaluated.
         """
-        # TODO: Add your code here
-        raise NotImplementedError("Punto 4: implemente MinimaxAgent.get_action")
+        self.nodes_evaluated = 0
 
+        def search(
+            node: GameState,
+            agent_index: int,
+            remaining_depth: int,
+        ):
+            self.nodes_evaluated += 1
+            if (
+                node.is_win()
+                or node.is_lose()
+                or remaining_depth == 0
+            ):
+                return evaluation_function(node), None
+
+            actions = node.get_legal_actions(agent_index)
+            if not actions:
+                return evaluation_function(node), None
+            next_agent = (
+                agent_index + 1
+            ) % node.get_num_agents()
+            if agent_index == 0:
+                best_value = float("-inf")
+                best_action = actions[0]
+
+                for action in actions:
+                    successor = node.generate_successor(
+                        agent_index,
+                        action,
+                    )
+                    value, _ = search(
+                        successor,
+                        next_agent,
+                        remaining_depth - 1,
+                    )
+                    if value > best_value:
+                        best_value = value
+                        best_action = action
+
+                return best_value, best_action
+            else:
+                best_value = float("inf")
+                best_action = actions[0]
+
+                for action in actions:
+                    successor = node.generate_successor(
+                        agent_index,
+                        action,
+                    )
+                    value, _ = search(
+                        successor,
+                        next_agent,
+                        remaining_depth - 1,
+                    )
+                    if value < best_value:
+                        best_value = value
+                        best_action = action
+
+                return best_value, best_action
+
+        _, action = search(
+            state,
+            0,
+            self.depth,
+        )
+
+        return action
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """Agente Minimax que evita explorar ramas mediante poda alfa-beta."""
